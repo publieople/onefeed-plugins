@@ -2,31 +2,34 @@
   "schemaVersion": 1,
   "id": "xiaohongshu",
   "name": "小红书",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "onefeed-plugins",
-  "description": "小红书发现页（只读，经本机 xhs CLI）",
+  "description": "小红书发现页（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
   "license": "MIT",
   "minHostVersion": "0.2.0",
   "entry": "index.js",
   "themeColor": "#FF2442",
   "capabilities": [
-    "cli"
+    "browser"
   ],
-  "cli": {
-    "allow": [
-      [
-        "xhs",
-        "feed"
-      ],
-      [
-        "xhs",
-        "status"
-      ]
-    ]
-  },
   "kinds": [
     "images",
     "video"
+  ],
+  "settings": [
+    {
+      "key": "cookieFile",
+      "label": "Cookie 文件",
+      "type": "path",
+      "default": "",
+      "description": "登录成功后客户端写入的 cookie 文件；留空则用状态目录 cookies/xiaohongshu.json"
+    },
+    {
+      "key": "cookieDomain",
+      "label": "Cookie 域",
+      "type": "string",
+      "default": ".xiaohongshu.com"
+    }
   ],
   "feeds": [
     {

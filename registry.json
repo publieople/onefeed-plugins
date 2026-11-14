@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-14T08:49:23Z",
+  "updatedAt": "2026-11-14T13:19:22Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -85,8 +85,8 @@
     {
       "id": "xiaohongshu",
       "name": "小红书",
-      "version": "0.1.0",
-      "description": "小红书发现页（只读，经本机 xhs CLI）",
+      "version": "0.2.0",
+      "description": "小红书发现页（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
       "author": "onefeed-plugins",
       "license": "MIT",
       "kinds": [
@@ -94,13 +94,13 @@
         "video"
       ],
       "capabilities": [
-        "cli"
+        "browser"
       ],
       "feeds": [
         "explore"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/xiaohongshu/",
-      "sha256": "80e60b37937a44d14098efee63665928c0f2391e56b8d4a086c8a0d62ed5d784"
+      "sha256": "5248a48c3cc1cffcbe682e6696e1fe59798f9c2b8b5591016970a6aea0d9a589"
     },
     {
       "id": "zhihu-hot",

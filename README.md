@@ -11,7 +11,7 @@ OneFeed 是一个本地信息流阅读器：一屏刷完 B 站、抖音、小红
 plugins/
   bilibili/       cli 引擎   B 站推荐流 + 关注动态      video / short
   douyin/         browser   抖音推荐流                 video
-  xiaohongshu/    cli 引擎   小红书发现页               images / video
+  xiaohongshu/    browser    小红书发现页               images / video
   juejin/         http      掘金推荐                   article
   v2ex/           http      V2EX 热门                  short
   zhihu-hot/      http      知乎热榜                   list
@@ -102,6 +102,11 @@ ONEFEED_PLUGINS_DIR=$PWD/plugins python ../onefeed/pull_all.py my-platform --lim
 | `ctx.storage.get/set/delete/keys` | 插件私有持久存储（宿主状态目录下的 `plugins/<id>/`） |
 | `ctx.cache.get/set(key, value, ttlSec)` | 带 TTL 的缓存 |
 | `ctx.settings.get(key)` | 读 manifest `settings` 里声明的配置；`secret:true` 的项只返回布尔值 |
+
+需要登录的平台不要在插件里碰 cookie：客户端把凭证写到宿主的
+`<状态目录>/cookies/<plugin-id>.json`，宿主按 `settings.cookieFile` → 该默认路径找到它，
+在 `browser.capture` 前自动注入。插件拿到的永远是页面已经签好名的响应。
+小红书插件就是这么做的（`plugins/xiaohongshu/`）。
 | `ctx.util.clamp("1.2万")` | 中文计数归一化 → `12000` |
 | `ctx.log.info/warn/error(msg)` | 写宿主的插件日志 |
 | `ctx.env.demo` | DEMO 模式（断网演示），插件应返回内置快照 |
@@ -140,8 +145,8 @@ ONEFEED_PLUGINS_DIR=$PWD/plugins python ../onefeed/pull_all.py my-platform --lim
 | 数据在哪 | 用 | 例子 |
 |---|---|---|
 | 公开 JSON 接口 | `http` | 掘金、V2EX、知乎热榜 |
-| 本机已有 CLI | `cli` | `bili`、`xhs`（登录态由 CLI 自己管） |
-| 只能在网页里跑出来 | `browser` | 抖音（接口要签名，改抓页面自己发的请求） |
+| 本机已有 CLI | `cli` | `bili`（登录态由 CLI 自己管） |
+| 只能在网页里跑出来 | `browser` | 抖音、小红书（接口要签名，改抓页面自己发的请求） |
 
 ## 发布一个新版本
 

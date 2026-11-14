@@ -1,5 +1,6 @@
-// 小红书插件：经本机 xhs CLI 取发现页（CLI 自己管登录态）。
-// 未登录时 CLI 会输出 "Not logged in. Run `xhs login` first."（纯文本，不是 JSON）。
+// 小红书插件：宿主浏览器打开发现页，截 homefeed 接口响应。
+// 不依赖 xhs-cli（它必须 Camoufox）；登录态由宿主注入 cookie 提供，
+// 插件本身看不到 cookie 明文，只拿到页面已经签过名的响应。
 "use strict";
 
 function pick() {
@@ -10,103 +11,136 @@ function pick() {
   return "";
 }
 
-function unixOf(value) {
-  if (typeof value === "number" && isFinite(value) && value > 0) {
-    const n = Math.floor(value);
-    return n > 1e12 ? Math.floor(n / 1000) : n;   // 毫秒 → 秒
-  }
-  const t = Date.parse(String(value || ""));
-  return isFinite(t) ? Math.floor(t / 1000) : 0;
-}
-
 function count(value) {
+  if (value === undefined || value === null || value === "") return 0;
   const v = Number(value);
-  return isFinite(v) && v > 0 ? Math.round(v) : 0;
+  if (isFinite(v) && v > 0) return Math.round(v);
+  // "1.2万" 这类
+  const m = String(value).match(/^([\d.]+)\s*万/);
+  return m ? Math.round(parseFloat(m[1]) * 10000) : 0;
 }
 
-function coverOf(note) {
-  const image = note.image || note.cover || note.cover_image || null;
+function textOf(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+}
+
+function imageUrlOf(image) {
   if (!image) return "";
   if (typeof image === "string") return image;
-  return String(pick(image.url_default, image.url, image.url_pre, image.cover));
+  // info_list 里 WB_DFT 是原图宽度档，url_default 兜底
+  const list = image.info_list || image.infoList || [];
+  let dft = "";
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] && list[i].image_scene === "WB_DFT" && list[i].url) dft = list[i].url;
+  }
+  return textOf(pick(dft, image.url_default, image.urlDefault, image.url_pre, image.urlPre, image.url));
 }
 
-function noteItem(note) {
-  const id = String(pick(note.note_id, note.id, note.noteId));
-  const user = note.user || note.author || {};
-  const interact = note.interact_info || note.interactInfo || note.stats || {};
-  const images = [];
-  const rawImages = note.images || note.image_list || note.imageList || [];
-  for (let i = 0; i < rawImages.length && images.length < 9; i++) {
-    const row = rawImages[i];
-    if (typeof row === "string") images.push(row);
-    else images.push(String(pick(row.url_default, row.url, row.url_pre)));
+function noteItem(row) {
+  const card = (row && row.note_card) || {};
+  const id = textOf(pick(row.id, card.note_id, card.noteId));
+  const title = textOf(pick(card.display_title, card.displayTitle, card.title, card.desc));
+  const cover = imageUrlOf(card.cover || card.image || null);
+  const user = card.user || card.author || {};
+  const interact = card.interact_info || card.interactInfo || {};
+  const type = textOf(card.type).toLowerCase();
+  const isVideo = type === "video";
+  const token = textOf(row.xsec_token);
+
+  // 详情页现在必须带 xsec_token，否则会跳登录或 404
+  let url = "https://www.xiaohongshu.com/explore/" + id;
+  if (token) {
+    url += "?xsec_token=" + encodeURIComponent(token) + "&xsec_source=pc_feed";
   }
-  const cover = coverOf(note) || (images.length ? images[0] : "");
-  if (images.length === 0 && cover) images.push(cover);
-  const type = String(note.type || note.note_type || "");
-  const isVideo = type.toLowerCase().indexOf("video") >= 0;
 
   return {
     native_id: "note:" + id,
     kind: isVideo ? "video" : "images",
-    title: String(pick(note.title, note.display_title, note.desc)).slice(0, 200),
-    text: String(pick(note.desc, note.content, note.text)),
-    url: "https://www.xiaohongshu.com/explore/" + id,
+    title: title.slice(0, 200),
+    text: textOf(pick(card.desc, card.description)),
+    url: url,
     cover: cover,
-    images: images,
+    images: cover ? [cover] : [],
     author: {
-      name: String(pick(user.nickname, user.nick_name, user.name)),
-      id: String(pick(user.user_id, user.userId, user.id)),
-      avatar: String(pick(user.avatar, user.image))
+      name: textOf(pick(user.nickname, user.nick_name, user.nickName, user.name)),
+      id: textOf(pick(user.user_id, user.userId, user.id)),
+      avatar: textOf(pick(user.avatar, user.image))
     },
-    published_at: unixOf(pick(note.time, note.create_time, note.publish_time, note.published_at)),
-    duration: count(note.video_time || note.duration),
+    // 首页信息流不带发布时间，留 0 由宿主排到后面，不编造
+    published_at: 0,
+    duration: count(pick(card.video_time, card.videoTime, card.duration)),
     stats: {
-      like: count(pick(interact.liked_count, interact.like_count, interact.likedCount)),
+      like: count(pick(interact.liked_count, interact.likedCount, interact.like_count)),
       comment: count(pick(interact.comment_count, interact.commentCount)),
       share: count(pick(interact.share_count, interact.shareCount)),
-      collect: count(pick(interact.collected_count, interact.collect_count))
+      collect: count(pick(interact.collected_count, interact.collectedCount))
     },
-    tags: (note.tag_list || note.tags || []).map(function (t) {
-      return typeof t === "string" ? t : String(t.name || "");
-    }).filter(function (t) { return t; }).slice(0, 6),
-    extra: {}
+    tags: [],
+    extra: { model_type: textOf(row.model_type) }
   };
+}
+
+function homefeedOf(responses) {
+  const rows = responses || [];
+  for (let i = 0; i < rows.length; i++) {
+    const payload = rows[i] && rows[i].json;
+    const data = payload && payload.data;
+    const items = data && data.items;
+    if (Array.isArray(items) && items.length) return items;
+  }
+  return [];
+}
+
+async function captureExplore(ctx, settleMs) {
+  return ctx.browser.capture({
+    url: "https://www.xiaohongshu.com/explore",
+    patterns: ["/api/sns/web/v1/homefeed"],
+    scroll: { times: 2, dy: 2400, intervalMs: 1500 },
+    timeoutMs: 60000,
+    settleMs: settleMs || 4500
+  });
 }
 
 module.exports = {
   async pull(ctx, args) {
     const limit = Math.min(Number(args.limit) || 20, 50);
-    const res = await ctx.cli.run({ argv: ["xhs", "feed", "--json"], timeoutMs: 60000 });
-    const text = String(res.stdout || "").trim();
-    if (/not logged in|未登录/i.test(text + " " + String(res.stderr || ""))) {
-      throw new Error("小红书未登录：先在终端执行 xhs login 扫码");
+    const res = await captureExplore(ctx);
+    const rows = homefeedOf(res.responses);
+    if (!rows.length) {
+      const landed = String(res.url || "");
+      if (landed.indexOf("/login") >= 0) {
+        throw new Error("小红书未登录：请在客户端扫码登录，cookie 会写入本机状态目录");
+      }
+      throw new Error("没有截到 homefeed 响应（页面停留 " + landed + "，可能被风控或页面改版）");
     }
-    if (!text) throw new Error("xhs feed 没有输出" + (res.stderr ? "：" + res.stderr.trim().slice(0, 200) : ""));
-
-    let payload;
-    try { payload = JSON.parse(text); }
-    catch (e) { throw new Error("xhs feed 输出不是 JSON：" + text.slice(0, 200)); }
-
-    let rows = payload;
-    if (!Array.isArray(rows)) {
-      rows = payload.items || payload.notes || payload.data || payload.feeds || [];
-      if (!Array.isArray(rows)) rows = [];
+    const items = [];
+    for (let i = 0; i < rows.length && items.length < limit; i++) {
+      const row = rows[i];
+      if (!row || row.model_type !== "note" || !row.note_card) continue;
+      if (row.ignore === true) continue;
+      try {
+        const it = noteItem(row);
+        if (it.native_id !== "note:") items.push(it);
+      } catch (e) {
+        ctx.log.warn("跳过一条解析失败的笔记: " + String(e));
+      }
     }
-    return { items: rows.slice(0, limit).map(noteItem), next: null };
+    if (!items.length) throw new Error("homefeed 有 " + rows.length + " 条，但没有可用 note 卡片");
+    return { items: items, next: null };
   },
 
   async auth(ctx) {
     try {
-      const res = await ctx.cli.run({ argv: ["xhs", "status"], timeoutMs: 20000 });
-      const text = String(res.stdout || "") + " " + String(res.stderr || "");
-      if (/not logged in|未登录/i.test(text)) {
-        return { state: "need_login", hint: "在终端执行 xhs login 扫码" };
+      const res = await captureExplore(ctx, 3500);
+      const rows = homefeedOf(res.responses);
+      if (rows.length) return { state: "ok", hint: "已登录，信息流可用（" + rows.length + " 条/屏）" };
+      if (String(res.url || "").indexOf("/login") >= 0) {
+        return { state: "need_login", hint: "在客户端扫码登录小红书" };
       }
-      return { state: "ok", hint: text.trim().slice(0, 120) };
+      return { state: "error", hint: "没能截到 homefeed，停留页 " + res.url };
     } catch (e) {
-      return { state: "need_login", hint: String(e).slice(0, 200) };
+      return { state: "error", hint: String(e).slice(0, 200) };
     }
   }
 };
