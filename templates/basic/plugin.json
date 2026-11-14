@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "template-basic",
+  "name": "HTTP 插件模板",
+  "version": "0.1.0",
+  "author": "your-name",
+  "description": "复制这个目录，改成你的平台",
+  "license": "MIT",
+  "minHostVersion": "0.2.0",
+  "entry": "index.js",
+  "capabilities": [
+    "http"
+  ],
+  "kinds": [
+    "list"
+  ],
+  "feeds": [
+    {
+      "id": "hot",
+      "name": "热榜"
+    }
+  ]
+}

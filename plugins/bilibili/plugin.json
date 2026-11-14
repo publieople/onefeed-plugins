@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "bilibili",
+  "name": "哔哩哔哩",
+  "version": "0.1.0",
+  "author": "onefeed-plugins",
+  "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）",
+  "license": "MIT",
+  "homepage": "https://github.com/publieople/onefeed-plugins",
+  "minHostVersion": "0.2.0",
+  "entry": "index.js",
+  "themeColor": "#FB7299",
+  "capabilities": [
+    "cli"
+  ],
+  "cli": {
+    "allow": [
+      [
+        "bili",
+        "feed"
+      ],
+      [
+        "bili",
+        "video"
+      ],
+      [
+        "bili",
+        "comment"
+      ]
+    ]
+  },
+  "kinds": [
+    "video",
+    "short",
+    "images"
+  ],
+  "feeds": [
+    {
+      "id": "recommend",
+      "name": "首页推荐",
+      "requiresAuth": true,
+      "personalized": true
+    },
+    {
+      "id": "timeline",
+      "name": "关注动态",
+      "requiresAuth": true,
+      "personalized": true
+    }
+  ]
+}

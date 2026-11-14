@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "juejin",
+  "name": "掘金",
+  "version": "0.1.0",
+  "author": "onefeed-plugins",
+  "description": "掘金推荐流（免登录，公开接口）",
+  "license": "MIT",
+  "minHostVersion": "0.2.0",
+  "entry": "index.js",
+  "themeColor": "#1E80FF",
+  "capabilities": [
+    "http"
+  ],
+  "kinds": [
+    "article"
+  ],
+  "feeds": [
+    {
+      "id": "recommend",
+      "name": "推荐",
+      "personalized": true
+    }
+  ]
+}

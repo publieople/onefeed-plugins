@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "douyin",
+  "name": "抖音",
+  "version": "0.1.0",
+  "author": "onefeed-plugins",
+  "description": "抖音网页端推荐流与评论（浏览器回放，不碰签名）",
+  "license": "MIT",
+  "minHostVersion": "0.2.0",
+  "entry": "index.js",
+  "themeColor": "#161823",
+  "capabilities": [
+    "browser"
+  ],
+  "kinds": [
+    "video"
+  ],
+  "feeds": [
+    {
+      "id": "recommend",
+      "name": "推荐",
+      "requiresAuth": true,
+      "personalized": true
+    }
+  ]
+}

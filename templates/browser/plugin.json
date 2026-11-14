@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "template-browser",
+  "name": "浏览器插件模板",
+  "version": "0.1.0",
+  "author": "your-name",
+  "description": "抓页面自己发的 JSON 接口",
+  "license": "MIT",
+  "minHostVersion": "0.2.0",
+  "entry": "index.js",
+  "capabilities": [
+    "browser"
+  ],
+  "kinds": [
+    "video"
+  ],
+  "feeds": [
+    {
+      "id": "recommend",
+      "name": "推荐",
+      "requiresAuth": true
+    }
+  ]
+}
