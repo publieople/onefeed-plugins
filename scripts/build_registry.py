@@ -55,6 +55,7 @@ def main(argv: list[str]) -> int:
             "license": data.get("license", ""),
             "kinds": data.get("kinds", []),
             "capabilities": data.get("capabilities", []),
+            "features": data.get("features", []),
             "feeds": [f.get("id") for f in data.get("feeds", [])],
             "download": RAW_BASE + data["id"] + "/",
             "sha256": dir_digest(plugin_dir),

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-15T11:51:41Z",
+  "updatedAt": "2026-11-15T12:52:20Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -17,6 +17,9 @@
       ],
       "capabilities": [
         "cli"
+      ],
+      "features": [
+        "comments"
       ],
       "feeds": [
         "recommend",
@@ -38,6 +41,7 @@
       "capabilities": [
         "browser"
       ],
+      "features": [],
       "feeds": [
         "recommend"
       ],
@@ -57,6 +61,7 @@
       "capabilities": [
         "http"
       ],
+      "features": [],
       "feeds": [
         "recommend"
       ],
@@ -76,6 +81,7 @@
       "capabilities": [
         "http"
       ],
+      "features": [],
       "feeds": [
         "hot"
       ],
@@ -96,6 +102,7 @@
       "capabilities": [
         "browser"
       ],
+      "features": [],
       "feeds": [
         "explore"
       ],
@@ -115,6 +122,7 @@
       "capabilities": [
         "http"
       ],
+      "features": [],
       "feeds": [
         "hot"
       ],
