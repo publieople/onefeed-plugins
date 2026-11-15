@@ -63,6 +63,15 @@
         }
       }
     },
+    "features": {
+      "type": "array",
+      "description": "插件对外提供的额外能力；目前只有 comments（详情页评论区）",
+      "items": {
+        "enum": [
+          "comments"
+        ]
+      }
+    },
     "kinds": {
       "type": "array",
       "minItems": 1,

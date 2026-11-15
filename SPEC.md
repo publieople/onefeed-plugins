@@ -27,6 +27,7 @@ my-plugin/
 | `entry` | | 默认 `index.js`，只能是文件名 |
 | `capabilities` | ✅ | `http` / `cli` / `browser` 的非空子集 |
 | `cli.allow` | 声明 cli 时必填 | 字符串数组的数组，第一段是裸命令名，后续是参数前缀 |
+| `features` | | 对外提供的额外能力，目前只有 `comments`；不写就是没有评论区 |
 | `kinds` | ✅ | 会产出的卡片形态 |
 | `feeds` | ✅ | `[{id,name,requiresAuth?,personalized?}]` |
 | `settings` | | `[{key,label,type,default,secret?,help?}]` |
@@ -46,7 +47,9 @@ module.exports = {
 ```
 
 - `pull`：拉一页，返回 `{items, next}`；`next` 为 null 表示没有下一页（本轮可不实现）
-- `comments`：给一条 item 拉评论，返回 `{items: [{id, author, text, like_count, created_at, replies?}]}`
+- `comments`：给一条 item 拉评论，返回 `{items: [{id, author, text, like_count, created_at, replies?}]}`；
+  同时在 `plugin.json` 里声明 `"features": ["comments"]`，宿主才会在详情页请求它。
+  没声明就不请求——多数平台拿评论要签名，拿不到就不做，卡片照常展示。
 - `auth`：`{state:"ok"|"need_login"|"expired", hint?}`；只在 `requiresAuth` 的流上被调用
 
 约定：
