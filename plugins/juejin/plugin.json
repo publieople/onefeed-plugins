@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "juejin",
   "name": "掘金",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "onefeed-plugins",
   "description": "掘金推荐流（免登录，公开接口）",
   "license": "MIT",
@@ -11,6 +11,9 @@
   "themeColor": "#1E80FF",
   "capabilities": [
     "http"
+  ],
+  "features": [
+    "detail"
   ],
   "kinds": [
     "article"

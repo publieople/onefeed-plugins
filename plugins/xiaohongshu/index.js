@@ -102,6 +102,51 @@ async function captureExplore(ctx, settleMs) {
   });
 }
 
+function bestStream(streams) {
+  const list = Array.isArray(streams) ? streams : [];
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] && list[i].url) return list[i];
+  }
+  return null;
+}
+
+async function buildDetail(ctx, args) {
+  const item = args.item || {};
+  const url = String(item.url || "");
+  if (!url) throw new Error("这条笔记没有可打开的地址");
+  const res = await ctx.browser.extract({ name: "xhs.note", url: url, timeoutMs: 60000, settleMs: 4000 });
+  const value = (res && res.value) || {};
+  if (!value.ok) {
+    throw new Error("小红书页内提取失败：" + String(value.reason || "未知原因") + "（停在 " + String((res && res.url) || "") + "）");
+  }
+  const images = (value.images || []).slice(0, 12);
+  const stream = bestStream(value.streams);
+  // 直链能取到，但浏览器里 <video>/<img> 会带上本地页面的 Referer，xhscdn 那边直接 403。
+  // 所以带上 referer 标记，让宿主边车代取（/api/media/<item>/video），请求头由宿主拼。
+  const media = stream ? {
+    type: "file",
+    url: String(stream.url),
+    poster: images[0] || String(item.cover || ""),
+    referer: "https://www.xiaohongshu.com/",
+    duration: Math.round(Number(value.duration) || 0)
+  } : null;
+  const interact = value.interact || {};
+  return {
+    body: { kind: "text", value: String(value.desc || item.text || "") },
+    media: media,
+    images: images,
+    stats: {
+      like: count(interact.like),
+      comment: count(interact.comment),
+      collect: count(interact.collect),
+      share: count(interact.share)
+    },
+    note: stream
+      ? "正文与图片取自页面自身数据；视频和图片都由宿主代取（xhscdn 会看 Referer），直链带时效签名，过期后点一次刷新。"
+      : "正文与图片取自页面自身数据；图片由宿主代取（xhscdn 会看 Referer）。图文笔记的正文常常只有话题标签，内容在图片里。"
+  };
+}
+
 module.exports = {
   async pull(ctx, args) {
     const limit = Math.min(Number(args.limit) || 20, 50);
@@ -128,6 +173,10 @@ module.exports = {
     }
     if (!items.length) throw new Error("homefeed 有 " + rows.length + " 条，但没有可用 note 卡片");
     return { items: items, next: null };
+  },
+
+  async detail(ctx, args) {
+    return buildDetail(ctx, args);
   },
 
   async auth(ctx) {

@@ -19,6 +19,9 @@ PLUGINS = ROOT / "plugins"
 SCHEMA_VERSION = 1
 CAPABILITIES = {"http", "browser", "cli"}
 KINDS = {"video", "images", "article", "short", "list"}
+FEATURES = {"comments", "detail", "media"}
+EMBED_PROVIDERS = {"bilibili", "douyin"}
+HOST_RE = re.compile(r"^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 MAX_ENTRY_BYTES = 200 * 1024
@@ -106,6 +109,35 @@ def check_manifest(plugin_dir: Path) -> list[str]:
                 seen.add(fid)
             if not str(feed.get("name") or "").strip():
                 bad(f"feed {fid} 缺少 name")
+
+    features = data.get("features")
+    if features is not None:
+        if not isinstance(features, list):
+            bad("features 必须是数组")
+        else:
+            unknown = [f for f in features if f not in FEATURES]
+            if unknown:
+                bad(f"未知 feature: {unknown}（可选 {sorted(FEATURES)}）")
+            if "media" in features and "detail" not in features:
+                bad("声明了 media 就要同时声明 detail：媒体地址只能从详情里来")
+
+    embeds = data.get("embeds")
+    if embeds is not None:
+        if not isinstance(embeds, list):
+            bad("embeds 必须是数组")
+        else:
+            unknown = [e for e in embeds if e not in EMBED_PROVIDERS]
+            if unknown:
+                bad(f"未知 embed 提供方: {unknown}（可选 {sorted(EMBED_PROVIDERS)}）")
+
+    hosts = data.get("mediaHosts")
+    if hosts is not None:
+        if not isinstance(hosts, list):
+            bad("mediaHosts 必须是数组")
+        else:
+            for h in hosts:
+                if not isinstance(h, str) or not HOST_RE.match(h.lower()):
+                    bad(f"mediaHosts 每项必须是不带协议的域名（可带 *. 前缀）: {h!r}")
 
     settings = data.get("settings")
     if settings is not None and not isinstance(settings, list):

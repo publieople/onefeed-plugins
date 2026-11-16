@@ -180,6 +180,48 @@ function commentItem(row) {
   };
 }
 
+// ---------------------------------------------------------------- 详情
+function bvidOf(item) {
+  const id = String(item.native_id || "");
+  if (id.indexOf("video:") === 0) return id.slice("video:".length);
+  const url = String(item.url || "");
+  const idx = url.indexOf("/video/");
+  if (idx < 0) return "";
+  const rest = url.slice(idx + "/video/".length);
+  return rest.split("?")[0].split("/")[0];
+}
+
+async function buildDetail(ctx, args) {
+  const item = args.item || {};
+  const bvid = bvidOf(item);
+  if (!bvid) {
+    return {
+      body: { kind: "text", value: String(item.text || "") },
+      note: "动态没有独立详情页，正文就是全部内容。"
+    };
+  }
+  const info = await run(ctx, ["bili", "video", "info", bvid, "--raw"], 40000);
+  const stat = info.stat || {};
+  const owner = info.owner || {};
+  return {
+    body: { kind: "text", value: String(info.desc || item.text || "") },
+    media: {
+      type: "embed",
+      embedUrl: "https://player.bilibili.com/player.html?bvid=" + bvid + "&page=1&autoplay=0",
+      poster: String(info.pic || item.cover || ""),
+      duration: count(info.duration) || count(item.duration)
+    },
+    stats: {
+      view: count(stat.view),
+      like: count(stat.like),
+      comment: count(stat.reply),
+      share: count(stat.share),
+      danmaku: count(stat.danmaku)
+    },
+    note: "画面用 B 站官方播放器内嵌；简介与统计来自 bili CLI，作者 " + String(owner.name || item.author && item.author.name || "")
+  };
+}
+
 module.exports = {
   async pull(ctx, args) {
     const feedId = String(args.feedId || "recommend");
@@ -187,6 +229,10 @@ module.exports = {
     if (feedId === "timeline") return pullTimeline(ctx, limit, args.cursor);
     if (feedId === "recommend") return pullRecommend(ctx, limit, args.cursor);
     throw new Error("未知的流：" + feedId + "（支持 recommend / timeline）");
+  },
+
+  async detail(ctx, args) {
+    return buildDetail(ctx, args);
   },
 
   async comments(ctx, args) {

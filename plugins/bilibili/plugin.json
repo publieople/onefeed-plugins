@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bilibili",
   "name": "哔哩哔哩",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "onefeed-plugins",
   "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）",
   "license": "MIT",
@@ -35,7 +35,9 @@
     "images"
   ],
   "features": [
-    "comments"
+    "comments",
+    "detail",
+    "media"
   ],
   "feeds": [
     {
@@ -50,5 +52,12 @@
       "requiresAuth": true,
       "personalized": true
     }
+  ],
+  "embeds": [
+    "bilibili"
+  ],
+  "mediaHosts": [
+    "*.hdslb.com",
+    "*.bilibili.com"
   ]
 }

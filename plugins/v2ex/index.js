@@ -2,6 +2,7 @@
 "use strict";
 
 const ENDPOINT = "https://www.v2ex.com/api/topics/hot.json";
+const SHOW_ENDPOINT = "https://www.v2ex.com/api/topics/show.json";
 
 function count(value) {
   const v = Number(value);
@@ -41,6 +42,42 @@ function topicItem(row) {
   };
 }
 
+function topicIdOf(item) {
+  const native = String((item && item.native_id) || "");
+  if (native.indexOf("topic:") === 0) return native.slice("topic:".length);
+  const m = String((item && item.url) || "").match(/\/t\/(\d+)/);
+  return m ? m[1] : "";
+}
+
+async function buildDetail(ctx, args) {
+  const item = args.item || {};
+  const id = topicIdOf(item);
+  if (!id) throw new Error("这条 V2EX 内容没有主题号");
+
+  const res = await ctx.http.request({
+    url: SHOW_ENDPOINT,
+    query: { id: id },
+    headers: { "Referer": "https://www.v2ex.com/t/" + id },
+    timeoutMs: 20000
+  });
+  if (res.status !== 200) throw new Error("V2EX 详情接口返回 HTTP " + res.status);
+  const rows = res.json();
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) throw new Error("V2EX 没有返回这个主题");
+
+  const html = String(row.content_rendered || "").trim();
+  const nodeName = String((row.node || {}).name || "");
+  return {
+    body: html
+      ? { kind: "html", value: html }
+      : { kind: "text", value: item.text || stripHtml(row.content) },
+    media: null,
+    images: [],
+    stats: { comment: count(row.replies) },
+    note: "正文是 V2EX 主题页的 HTML，评论要在原帖看" + (nodeName ? "（节点 " + nodeName + "）" : "") + "。"
+  };
+}
+
 module.exports = {
   async pull(ctx, args) {
     const limit = Math.min(Number(args.limit) || 20, 50);
@@ -55,5 +92,9 @@ module.exports = {
     const rows = res.json();
     if (!Array.isArray(rows)) throw new Error("V2EX 返回了非数组：" + res.text.slice(0, 160));
     return { items: rows.slice(0, limit).map(topicItem), next: null };
+  },
+
+  async detail(ctx, args) {
+    return buildDetail(ctx, args);
   }
 };

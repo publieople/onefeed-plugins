@@ -66,6 +66,14 @@ function awemeItem(row) {
   };
 }
 
+function awemeIdOf(item) {
+  const id = String(item.native_id || "");
+  if (id.indexOf("video:") === 0) return id.slice("video:".length);
+  const url = String(item.url || "");
+  const idx = url.indexOf("/video/");
+  return idx < 0 ? "" : url.slice(idx + "/video/".length).split("?")[0].split("/")[0];
+}
+
 module.exports = {
   async pull(ctx, args) {
     const limit = Math.min(Number(args.limit) || 20, 50);
@@ -87,6 +95,28 @@ module.exports = {
     }
     const items = payload.aweme_list.slice(0, limit).map(awemeItem);
     return { items: items, next: null };
+  },
+
+  async detail(ctx, args) {
+    const item = args.item || {};
+    const id = awemeIdOf(item);
+    if (!id) throw new Error("这条内容没有 aweme_id，没法拼官方播放器");
+    // 正文与评论不硬凑：抖音网页端的 detail 接口要 a_bogus 签名，这里只给能稳定拿到的东西。
+    return {
+      body: { kind: "text", value: String(item.text || "") },
+      media: {
+        type: "embed",
+        embedUrl: "https://open.douyin.com/player/video?vid=" + id + "&autoplay=0",
+        poster: String(item.cover || ""),
+        duration: Math.round(Number(item.duration) || 0)
+      },
+      stats: {
+        like: Math.round(Number(item.like_count) || 0),
+        comment: Math.round(Number(item.comment_count) || 0),
+        share: Math.round(Number(item.share_count) || 0)
+      },
+      note: "抖音只开放官方播放器，评论要在原帖看。"
+    };
   },
 
   async comments(ctx, args) {
