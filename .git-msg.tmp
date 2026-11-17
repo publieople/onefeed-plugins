@@ -1,4 +1,0 @@
-chore: 详情 note 改成人话，去掉面向上游实现的说明
-
-- v2ex / bilibili / 掘金三个插件的 detail note 置空（用户不需要知道数据怎么取的）
-- registry.json 重算 sha256

@@ -11,3 +11,4 @@ dist/
 .DS_Store
 Thumbs.db
 .git-commit-msg.tmp
+.git-msg.tmp
