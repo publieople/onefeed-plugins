@@ -3,6 +3,8 @@
 "use strict";
 
 const RECOMMEND_PATTERN = "/api/v3/feed/topstory/recommend";
+// 评论区：回答走 questions/{问题id}，专栏走 articles/{文章id}，都要页面自己带签名发。
+const COMMENT_PATTERN = "/api/v4/comment_v5/(questions|articles)/\\d+/root_comment";
 
 function count(value) {
   const v = Number(value);
@@ -66,6 +68,30 @@ function feedItem(row) {
       zhihu_type: type,
       question_id: String(question.id || "")
     }
+  };
+}
+
+function commentRow(row) {
+  const author = row.author || {};
+  const children = Array.isArray(row.child_comments) ? row.child_comments : [];
+  return {
+    id: String(row.id || ""),
+    author: String(author.name || ""),
+    author_id: String(author.id || ""),
+    text: clean(row.content || ""),
+    like_count: count(row.like_count),
+    reply_count: count(row.child_comment_count),
+    created_at: count(row.created_time),
+    replies: children.slice(0, 3).map(function (reply) {
+      const ra = reply.author || {};
+      return {
+        id: String(reply.id || ""),
+        author: String(ra.name || ""),
+        text: clean(reply.content || ""),
+        like_count: count(reply.like_count),
+        created_at: count(reply.created_time)
+      };
+    })
   };
 }
 
@@ -156,5 +182,48 @@ module.exports = {
       stats: stats,
       note: "推荐流只带摘要，完整正文没取到；点「去知乎看原帖」看全文与评论。"
     };
+  },
+
+  async comments(ctx, args) {
+    const item = args.item || {};
+    const extra = item.extra || {};
+    const type = String(extra.zhihu_type || "");
+    const limit = Math.min(Number(args.limit) || 20, 50);
+    const url = String(item.url || "");
+    if (!url) throw new Error("这条知乎内容没有原帖地址，取不到评论");
+
+    // 回答页的评论要点头部的「N 条评论」才展开（展开后继续滚还能翻页）；
+    // 专栏页反过来：不点、只滚页面，底部评论列表跟着加载得更全，点开后反而只剩几条精选。
+    const cap = await ctx.browser.capture({
+      url: url,
+      patterns: [COMMENT_PATTERN],
+      scroll: { times: 6, dy: 2400, intervalMs: 900 },
+      click: type === "answer" ? ['button:has-text("条评论")'] : [],
+      // 弹层盖在页面上时滚轮得落在它中间才翻页；专栏页是普通页面，交给默认行为
+      scrollPoint: type === "answer" ? { x: 720, y: 600 } : {},
+      settleMs: 3500,
+      timeoutMs: 75000,
+      // 评论是一页一页翻的，抓到第一页别停
+      stopWhenMatched: false
+    });
+
+    const seen = {};
+    const rows = [];
+    const responses = cap.responses || [];
+    for (let i = 0; i < responses.length; i++) {
+      const payload = responses[i] && responses[i].json;
+      if (!payload || !Array.isArray(payload.data)) continue;
+      for (let k = 0; k < payload.data.length; k++) {
+        const row = payload.data[k];
+        const key = String((row && row.id) || "");
+        if (!key || seen[key]) continue;
+        seen[key] = true;
+        rows.push(row);
+      }
+    }
+    if (!rows.length) {
+      throw new Error("没抓到知乎评论：评论区没展开，或这条内容关闭了评论");
+    }
+    return { items: rows.slice(0, limit).map(commentRow) };
   }
 };
