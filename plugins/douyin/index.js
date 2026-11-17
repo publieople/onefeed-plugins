@@ -34,6 +34,8 @@ function awemeItem(row) {
                 firstUrl(video.origin_cover && video.origin_cover.url_list) ||
                 firstUrl(video.dynamic_cover && video.dynamic_cover.url_list);
   const desc = String(row.desc || "");
+  // 详情页的兜底：官方播放器偶尔不认 vid，把网页端这条直链一起存下来
+  const playAddr = firstUrl(video.play_addr && video.play_addr.url_list);
   const tags = [];
   const extraText = row.text_extra || [];
   for (let i = 0; i < extraText.length && tags.length < 6; i++) {
@@ -62,7 +64,7 @@ function awemeItem(row) {
       collect: count(stats.collect_count)
     },
     tags: tags,
-    extra: {}
+    extra: playAddr ? { play_addr: playAddr } : {}
   };
 }
 
@@ -101,21 +103,30 @@ module.exports = {
     const item = args.item || {};
     const id = awemeIdOf(item);
     if (!id) throw new Error("这条内容没有 aweme_id，没法拼官方播放器");
+    const extra = item.extra || {};
+    const media = {
+      type: "embed",
+      embedUrl: "https://open.douyin.com/player/video?vid=" + id + "&autoplay=0",
+      poster: String(item.cover || ""),
+      duration: Math.round(Number(item.duration) || 0)
+    };
+    // 采集时存下来的网页直链：官方播放器打不开时，前端可以切到它（宿主边车补 Referer）
+    if (extra.play_addr) {
+      media.fallbackUrl = String(extra.play_addr);
+      media.fallbackReferer = "https://www.douyin.com/";
+    }
     // 正文与评论不硬凑：抖音网页端的 detail 接口要 a_bogus 签名，这里只给能稳定拿到的东西。
     return {
       body: { kind: "text", value: String(item.text || "") },
-      media: {
-        type: "embed",
-        embedUrl: "https://open.douyin.com/player/video?vid=" + id + "&autoplay=0",
-        poster: String(item.cover || ""),
-        duration: Math.round(Number(item.duration) || 0)
-      },
+      media: media,
       stats: {
         like: Math.round(Number(item.like_count) || 0),
         comment: Math.round(Number(item.comment_count) || 0),
         share: Math.round(Number(item.share_count) || 0)
       },
-      note: "抖音只开放官方播放器，评论要在原帖看。"
+      note: extra.play_addr
+        ? "抖音只开放官方播放器；打不开时点「换直链播放」，直链由宿主边车补 Referer 后转发。评论要在原帖看。"
+        : "抖音只开放官方播放器，评论要在原帖看。"
     };
   },
 

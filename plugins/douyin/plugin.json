@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "douyin",
   "name": "抖音",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "onefeed-plugins",
   "description": "抖音网页端推荐流与评论（浏览器回放，不碰签名）",
   "license": "MIT",
@@ -28,5 +28,8 @@
   ],
   "embeds": [
     "douyin"
+  ],
+  "mediaHosts": [
+    "*.douyin.com"
   ]
 }

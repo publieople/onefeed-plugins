@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-16T08:00:20Z",
+  "updatedAt": "2026-11-17T01:26:57Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -33,7 +33,7 @@
     {
       "id": "douyin",
       "name": "抖音",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "抖音网页端推荐流与评论（浏览器回放，不碰签名）",
       "author": "onefeed-plugins",
       "license": "MIT",
@@ -50,7 +50,7 @@
         "recommend"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/douyin/",
-      "sha256": "add6dca849b3ed5e280c8d07f28fc65a83041b8028d4b983f51440af3b1e77b5"
+      "sha256": "66660fff1ccc130d1e49d5c1ae195c0d510011142c079cd1caaca50f0d94f34f"
     },
     {
       "id": "juejin",
@@ -123,7 +123,7 @@
     {
       "id": "zhihu-hot",
       "name": "知乎热榜",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "知乎热榜（免登录，公开接口）",
       "author": "onefeed-plugins",
       "license": "MIT",
@@ -131,14 +131,17 @@
         "list"
       ],
       "capabilities": [
-        "http"
+        "http",
+        "browser"
       ],
-      "features": [],
+      "features": [
+        "detail"
+      ],
       "feeds": [
         "hot"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/zhihu-hot/",
-      "sha256": "1c6737d1cdd8c9ba06bf36f464e969ac08b393e92bc36cbe8034d9e278704f98"
+      "sha256": "8a60c873b4da48a3396b548a520afecab41c81cfe692080b311f438860d25a16"
     }
   ]
 }

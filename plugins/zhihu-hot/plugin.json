@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "zhihu-hot",
   "name": "知乎热榜",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "onefeed-plugins",
   "description": "知乎热榜（免登录，公开接口）",
   "license": "MIT",
@@ -10,7 +10,8 @@
   "entry": "index.js",
   "themeColor": "#0084FF",
   "capabilities": [
-    "http"
+    "http",
+    "browser"
   ],
   "kinds": [
     "list"
@@ -20,5 +21,8 @@
       "id": "hot",
       "name": "热榜"
     }
+  ],
+  "features": [
+    "detail"
   ]
 }
