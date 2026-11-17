@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-17T01:26:57Z",
+  "updatedAt": "2026-11-17T01:58:13Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -119,6 +119,29 @@
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/xiaohongshu/",
       "sha256": "75dff0a06068b1206fdc40f77125ea833f0dfdcec933345676087385fe3a2677"
+    },
+    {
+      "id": "zhihu",
+      "name": "知乎",
+      "version": "0.1.0",
+      "description": "知乎推荐流（登录态，浏览器回放取数）",
+      "author": "onefeed-plugins",
+      "license": "MIT",
+      "kinds": [
+        "article",
+        "video"
+      ],
+      "capabilities": [
+        "browser"
+      ],
+      "features": [
+        "detail"
+      ],
+      "feeds": [
+        "recommend"
+      ],
+      "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/zhihu/",
+      "sha256": "19d72a693540075494274cbb955aeace653a5719b2efd8c1b1a764db65af4cdb"
     },
     {
       "id": "zhihu-hot",
