@@ -224,6 +224,7 @@ module.exports = {
     if (!rows.length) {
       throw new Error("没抓到知乎评论：评论区没展开，或这条内容关闭了评论");
     }
-    return { items: rows.slice(0, limit).map(commentRow) };
+    // 知乎评论是页面自己按滚轮一页页拉，宿主拿不到可复用的游标：只出第一页。
+    return { items: rows.slice(0, limit).map(commentRow), next: null };
   }
 };

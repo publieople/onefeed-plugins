@@ -239,11 +239,25 @@ module.exports = {
     const item = args.item || {};
     const target = (item.extra || {}).comment_target || null;
     if (!target) throw new Error("这条内容没有可用的评论区标识");
-    const data = await run(ctx, [
-      "bili", "comment", "list", String(target.id), "--type", String(target.type), "--sort", "hot"
-    ]);
-    const rows = (data.pinned || []).concat(data.items || []);
-    return { items: rows.map(commentItem).slice(0, Number(args.limit) || 20) };
+    const page = Math.max(1, Math.min(Number(args.cursor) || 1, 20));
+    const argv = ["bili", "comment", "list", String(target.id),
+      "--type", String(target.type), "--sort", "hot"];
+    if (page > 1) argv.push("--page", String(page));
+    let data;
+    try {
+      data = await run(ctx, argv);
+    } catch (err) {
+      // 第 2 页起要登录态，取不到就当翻到底，别把整个评论区打红
+      if (page > 1) return { items: [], next: null };
+      throw err;
+    }
+    const rows = (page === 1 ? (data.pinned || []) : []).concat(data.items || []);
+    const limit = Number(args.limit) || 20;
+    const plain = data.items || [];
+    return {
+      items: rows.map(commentItem).slice(0, limit),
+      next: plain.length >= 10 ? String(page + 1) : null
+    };
   },
 
   async auth(ctx) {

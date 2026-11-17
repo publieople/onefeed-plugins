@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-17T02:57:37Z",
+  "updatedAt": "2026-11-17T03:38:19Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -28,7 +28,7 @@
         "timeline"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/bilibili/",
-      "sha256": "bf86d55087dc70ba0ab25538ece9ac7e4969d93e6b5e44acbbb8167a112859d6"
+      "sha256": "c3eb4f87c73b42ad156683cd40883e29393b7ff6d72377ad850aa4383b3cb148"
     },
     {
       "id": "douyin",
@@ -142,7 +142,7 @@
         "recommend"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/zhihu/",
-      "sha256": "09a348f79c0dcd97a476d8b0976ffd9ae36f21ca289108b0af003619b1178251"
+      "sha256": "fc5d735b8ac756e9dbb119ff52c56a5b45d68667a9734b0591009ae975bc2fa7"
     },
     {
       "id": "zhihu-hot",
