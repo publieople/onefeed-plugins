@@ -68,6 +68,54 @@ function awemeItem(row) {
   };
 }
 
+function commentItem(row) {
+  const user = row.user || {};
+  const replies = [];
+  const kids = Array.isArray(row.reply_comment) ? row.reply_comment : [];
+  for (let i = 0; i < kids.length && replies.length < 3; i++) {
+    const kid = kids[i] || {};
+    const ku = kid.user || {};
+    replies.push({
+      id: String(kid.cid || ""),
+      author: String(ku.nickname || ""),
+      text: String(kid.text || ""),
+      like_count: count(kid.digg_count),
+      created_at: count(kid.create_time)
+    });
+  }
+  return {
+    id: String(row.cid || ""),
+    author: String(user.nickname || ""),
+    author_id: String(user.sec_uid || ""),
+    text: String(row.text || ""),
+    like_count: count(row.digg_count),
+    reply_count: count(row.reply_comment_total),
+    created_at: count(row.create_time),
+    replies: replies
+  };
+}
+
+// 滚屏会多次触发 comment/list，每页 5-20 条，按 cid 合并成一份
+function collectCommentRows(responses) {
+  const rows = [];
+  const seen = {};
+  const list = responses || [];
+  for (let i = 0; i < list.length; i++) {
+    const json = list[i] && list[i].json;
+    const items = json && json.comments;
+    if (!Array.isArray(items)) continue;
+    for (let j = 0; j < items.length; j++) {
+      const row = items[j];
+      if (!row || !row.cid) continue;
+      const id = String(row.cid);
+      if (seen[id]) continue;
+      seen[id] = 1;
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
 function awemeIdOf(item) {
   const id = String(item.native_id || "");
   if (id.indexOf("video:") === 0) return id.slice("video:".length);
@@ -125,38 +173,31 @@ module.exports = {
         share: Math.round(Number(item.share_count) || 0)
       },
       note: extra.play_addr
-        ? "抖音只开放官方播放器；打不开时点「换直链播放」，直链由宿主边车补 Referer 后转发。评论要在原帖看。"
-        : "抖音只开放官方播放器，评论要在原帖看。"
+        ? "抖音只开放官方播放器；打不开时点「换直链播放」，直链由宿主边车补 Referer 后转发。评论未登录时只给第一页，更多要去原帖看。"
+        : "抖音只开放官方播放器；评论未登录时只给第一页，更多要去原帖看。"
     };
   },
 
   async comments(ctx, args) {
     const item = args.item || {};
-    const secUid = (item.author || {}).id || "";
-    if (!secUid) throw new Error("这条内容没有可用的 aweme_id");
+    const id = awemeIdOf(item);
+    if (!id) throw new Error("这条内容没有 aweme_id，取不到评论");
+    const limit = Math.min(Number(args.limit) || 20, 50);
+    // 未登录时抖音只给第一页 5 条就提示登录，登录后才继续翻；这里滚几次把能拿的都收下，
+    // 拿不到更多就 next=null，由前端提示去原帖看。
     const cap = await ctx.browser.capture({
-      url: item.url || "https://www.douyin.com/",
+      url: "https://www.douyin.com/video/" + id,
       patterns: [COMMENT_PATTERN],
-      scroll: { times: 1, dy: 1200, intervalMs: 900 },
-      settleMs: 2500,
-      timeoutMs: 65000
+      scroll: { times: 6, dy: 1400, intervalMs: 900 },
+      settleMs: 3000,
+      timeoutMs: 70000,
+      stopWhenMatched: false
     });
-    const payload = pickJson(cap.responses, function (json) {
-      return json && json.comments && json.comments.length;
-    });
-    if (!payload) throw new Error("没抓到抖音评论");
-    return {
-      items: payload.comments.slice(0, Number(args.limit) || 20).map(function (row) {
-        return {
-          id: String(row.cid),
-          author: String((row.user || {}).nickname || ""),
-          text: String(row.text || ""),
-          like_count: count(row.digg_count),
-          reply_count: count(row.reply_comment_total),
-          created_at: count(row.create_time),
-          replies: []
-        };
-      })
-    };
+    const rows = collectCommentRows(cap.responses);
+    if (!rows.length) {
+      throw new Error("没抓到抖音评论：这条可能关闭了评论，或页面停在登录提示上");
+    }
+    const items = rows.slice(0, limit).map(commentItem);
+    return { items: items, next: null };
   }
 };

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "xiaohongshu",
   "name": "小红书",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "onefeed-plugins",
   "description": "小红书发现页（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
   "license": "MIT",
@@ -41,7 +41,8 @@
   ],
   "features": [
     "detail",
-    "media"
+    "media",
+    "comments"
   ],
   "mediaHosts": [
     "*.xhscdn.com"

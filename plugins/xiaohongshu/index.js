@@ -110,6 +110,66 @@ function bestStream(streams) {
   return null;
 }
 
+// ---------------------------------------------------------------- 评论
+const COMMENT_PATTERN = "/api/sns/web/v2/comment/page";
+const COMMENT_CACHE_MS = 600000;
+
+function noteIdOf(item) {
+  const native = textOf(item.native_id || "");
+  if (native.indexOf("note:") === 0) return native.slice("note:".length);
+  const url = textOf(item.url || "");
+  const m = url.match(/\/explore\/([0-9a-zA-Z]+)/);
+  return m ? m[1] : "";
+}
+
+function commentItem(row) {
+  const user = row.user_info || {};
+  const replies = [];
+  const kids = Array.isArray(row.sub_comments) ? row.sub_comments : [];
+  for (let i = 0; i < kids.length && replies.length < 3; i++) {
+    const kid = kids[i] || {};
+    const ku = kid.user_info || {};
+    replies.push({
+      id: textOf(kid.id),
+      author: textOf(ku.nickname),
+      text: textOf(kid.content),
+      like_count: count(kid.like_count),
+      created_at: Math.round(count(kid.create_time) / 1000)
+    });
+  }
+  return {
+    id: textOf(row.id),
+    author: textOf(user.nickname),
+    author_id: textOf(user.user_id),
+    text: textOf(row.content),
+    like_count: count(row.like_count),
+    reply_count: count(row.sub_comment_count),
+    created_at: Math.round(count(row.create_time) / 1000),
+    replies: replies
+  };
+}
+
+function collectCommentRows(responses) {
+  const rows = [];
+  const seen = {};
+  const list = responses || [];
+  for (let i = 0; i < list.length; i++) {
+    const payload = list[i] && list[i].json;
+    const data = payload && payload.data;
+    const items = data && data.comments;
+    if (!Array.isArray(items)) continue;
+    for (let j = 0; j < items.length; j++) {
+      const row = items[j];
+      if (!row || !row.id) continue;
+      const id = String(row.id);
+      if (seen[id]) continue;
+      seen[id] = 1;
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
 async function buildDetail(ctx, args) {
   const item = args.item || {};
   const url = String(item.url || "");
@@ -177,6 +237,46 @@ module.exports = {
 
   async detail(ctx, args) {
     return buildDetail(ctx, args);
+  },
+
+  async comments(ctx, args) {
+    const item = args.item || {};
+    const noteId = noteIdOf(item);
+    if (!noteId) throw new Error("这条笔记没有 note_id，取不到评论");
+    const limit = Math.min(Number(args.limit) || 20, 50);
+    const offset = Math.max(0, Number(args.cursor) || 0);
+    const key = "comments:" + (item.id || noteId);
+
+    // 页面的评论 cursor 是它自己算的 opaque 值，插件没法直接续；
+    // 所以一次滚到底把能拿的都抓下来，缓在插件存储里，翻页时切片。十分钟内再翻不重开浏览器。
+    let all = ctx.cache.get(key);
+    if (!Array.isArray(all) || !all.length) {
+      const cap = await ctx.browser.capture({
+        url: String(item.url || ("https://www.xiaohongshu.com/explore/" + noteId)),
+        patterns: [COMMENT_PATTERN],
+        // 评论列在右侧，滚轮必须落在这块，否则页面只滚正文、不发评论请求
+        scrollPoint: { x: 1180, y: 620 },
+        scroll: { times: 10, dy: 1100, intervalMs: 1000 },
+        settleMs: 4000,
+        timeoutMs: 90000,
+        stopWhenMatched: false
+      });
+      const rows = collectCommentRows(cap.responses);
+      if (!rows.length) {
+        const landed = String(cap.url || "");
+        if (landed.indexOf("/login") >= 0) {
+          throw new Error("小红书未登录：先在客户端扫码登录，评论才拿得到");
+        }
+        throw new Error("没截到小红书评论：这条可能关闭了评论，或页面被风控（停在 " + landed + "）");
+      }
+      all = rows.map(commentItem);
+      ctx.cache.set(key, all, 600);
+    }
+    const slice = all.slice(offset, offset + limit);
+    return {
+      items: slice,
+      next: all.length > offset + limit ? String(offset + limit) : null
+    };
   },
 
   async auth(ctx) {
