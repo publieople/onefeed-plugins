@@ -102,7 +102,7 @@ async function buildDetail(ctx, args) {
     media: null,
     images: [],
     stats: null,
-    note: "正文取自掘金文章页，图片仍是掘金自己的地址。"
+    note: ""
   };
 }
 

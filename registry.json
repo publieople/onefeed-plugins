@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-17T03:57:20Z",
+  "updatedAt": "2026-11-17T15:22:55Z",
   "plugins": [
     {
       "id": "bilibili",
@@ -28,7 +28,7 @@
         "timeline"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/bilibili/",
-      "sha256": "c3eb4f87c73b42ad156683cd40883e29393b7ff6d72377ad850aa4383b3cb148"
+      "sha256": "39860413e2829048c4cbc75b35075ab5d4d248ad21c527652491f922d8817f0b"
     },
     {
       "id": "douyin",
@@ -73,7 +73,7 @@
         "recommend"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/juejin/",
-      "sha256": "d061c9522a6f920d5afab86a783ea4bd05486182f0abc562b802bcaeec73974d"
+      "sha256": "29f3d91860e1124aa7339d1355553a72708f72f914f91e19e28e60f1250a6c9b"
     },
     {
       "id": "v2ex",
@@ -95,7 +95,7 @@
         "hot"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/v2ex/",
-      "sha256": "1bc5f09b040e6f6ecc1a219c1d562061a39e8fb8251f6bad3ad2328f4f657656"
+      "sha256": "c6bef2e73d39bb38adf9abae0dcd57ff52713b1a2be12240cf6ac8506d5aa4c2"
     },
     {
       "id": "xiaohongshu",

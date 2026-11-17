@@ -218,7 +218,7 @@ async function buildDetail(ctx, args) {
       share: count(stat.share),
       danmaku: count(stat.danmaku)
     },
-    note: "画面用 B 站官方播放器内嵌；简介与统计来自 bili CLI，作者 " + String(owner.name || item.author && item.author.name || "")
+    note: ""
   };
 }
 

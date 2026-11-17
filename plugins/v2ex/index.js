@@ -74,7 +74,7 @@ async function buildDetail(ctx, args) {
     media: null,
     images: [],
     stats: { comment: count(row.replies) },
-    note: "正文是 V2EX 主题页的 HTML，评论要在原帖看" + (nodeName ? "（节点 " + nodeName + "）" : "") + "。"
+    note: ""
   };
 }
 
