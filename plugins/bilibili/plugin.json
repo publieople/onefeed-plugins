@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "bilibili",
   "name": "哔哩哔哩",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "author": "onefeed-plugins",
-  "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）",
+  "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）；详情页可出 AI 总结",
   "license": "MIT",
   "homepage": "https://github.com/publieople/onefeed-plugins",
   "minHostVersion": "0.2.0",
@@ -27,6 +27,15 @@
         "bili",
         "comment"
       ]
+    ],
+    "env": {
+      "BILI_CLI_HOME": "${state}/toolhome/bili-cli"
+    },
+    "seed": [
+      {
+        "from": "${appdata}/bili-cli/credential.json",
+        "to": "${state}/toolhome/bili-cli/credential.json"
+      }
     ]
   },
   "kinds": [
@@ -37,7 +46,8 @@
   "features": [
     "comments",
     "detail",
-    "media"
+    "media",
+    "summary"
   ],
   "feeds": [
     {

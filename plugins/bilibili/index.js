@@ -222,6 +222,68 @@ async function buildDetail(ctx, args) {
   };
 }
 
+// ---------------------------------------------------------------- 总结素材
+// 总结要两样东西：能带时间点的字幕（subtitle 的 items），以及官方总结/简介/热评（watch）。
+// 字幕拿不到就退回 watch 的纯文本，要点没有时间点也比编时间点强。
+const SUMMARY_LINE_MAX = 900;
+
+function splitTranscript(text) {
+  return String(text || "").split(/\n+/).map(function (line) {
+    return line.trim();
+  }).filter(function (line) {
+    return line.length > 1;
+  }).slice(0, SUMMARY_LINE_MAX);
+}
+
+async function buildSummarySource(ctx, args) {
+  const item = args.item || {};
+  const bvid = bvidOf(item);
+  if (!bvid) throw new Error("这条不是 B 站视频，取不到字幕");
+  const data = await run(ctx, [
+    "bili", "video", "watch", bvid,
+    "--frames", "0", "--comments", "5", "--max-chars", "6000"
+  ], 70000);
+
+  let lines = [];
+  let source = "";
+  try {
+    const sub = await run(ctx, ["bili", "video", "subtitle", bvid], 45000);
+    const rows = Array.isArray(sub.items) ? sub.items : [];
+    lines = rows.map(function (row) {
+      return {
+        t: Math.max(0, Math.round(Number(row.from) || 0)),
+        text: String(row.content || "").trim()
+      };
+    }).filter(function (row) { return row.text; }).slice(0, SUMMARY_LINE_MAX);
+    source = String(sub.lang || "");
+  } catch (e) {
+    ctx.log.warn("字幕取不到，退回 watch 的纯文本：" + String(e).slice(0, 120));
+  }
+  if (!lines.length) {
+    lines = splitTranscript((data.transcript || {}).text).map(function (text) {
+      return { t: null, text: text };
+    });
+  }
+  const official = String(data.ai_summary || "");
+  return {
+    basis: lines.length ? "transcript" : (official ? "official" : "desc"),
+    duration: count(data.duration) || count(item.duration),
+    title: String(data.title || item.title || ""),
+    desc: String(data.desc || item.text || ""),
+    official: official,
+    transcript: lines.length
+      ? { source: source ? "subtitle:" + source : "watch", lines: lines }
+      : null,
+    chapters: (data.chapters || []).map(function (c) {
+      const at = Number(c.t || c.from || c.start || c.time || 0) || 0;
+      return { t: Math.max(0, Math.round(at)), title: String(c.title || "") };
+    }).filter(function (c) { return c.title; }),
+    comments: (data.hot_comments || []).map(function (c) {
+      return { user: String(c.user || ""), text: String(c.content || ""), like: count(c.like) };
+    })
+  };
+}
+
 module.exports = {
   async pull(ctx, args) {
     const feedId = String(args.feedId || "recommend");
@@ -258,6 +320,10 @@ module.exports = {
       items: rows.map(commentItem).slice(0, limit),
       next: plain.length >= 10 ? String(page + 1) : null
     };
+  },
+
+  async summarySource(ctx, args) {
+    return buildSummarySource(ctx, args);
   },
 
   async auth(ctx) {
