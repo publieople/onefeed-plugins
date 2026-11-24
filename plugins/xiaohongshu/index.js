@@ -3,6 +3,10 @@
 // 插件本身看不到 cookie 明文，只拿到页面已经签过名的响应。
 "use strict";
 
+// 关注流的入口仍是 explore 页，只是 channel_id 不同；接口名两种都兼容
+const FOLLOW_PAGE = "https://www.xiaohongshu.com/explore?channel_id=homefeed.follow";
+const FOLLOW_PATTERNS = ["/api/sns/web/v1/homefeed", "/api/sns/v1/follow/feed"];
+
 function pick() {
   for (let i = 0; i < arguments.length; i++) {
     const v = arguments[i];
@@ -207,9 +211,63 @@ async function buildDetail(ctx, args) {
   };
 }
 
+function allFeedRows(responses) {
+  const rows = [];
+  const list = responses || [];
+  for (let i = 0; i < list.length; i++) {
+    const payload = list[i] && list[i].json;
+    if (!payload) continue;
+    const data = payload.data;
+    const inner = data && data.items;
+    if (Array.isArray(inner)) rows.push.apply(rows, inner);
+    else if (Array.isArray(data)) rows.push.apply(rows, data);
+    else if (Array.isArray(payload.items)) rows.push.apply(rows, payload.items);
+  }
+  return rows;
+}
+
+async function pullFollowing(ctx, limit) {
+  const cap = await ctx.browser.capture({
+    url: FOLLOW_PAGE,
+    patterns: FOLLOW_PATTERNS,
+    scroll: { times: 2, dy: 2400, intervalMs: 1500 },
+    timeoutMs: 60000,
+    settleMs: 4500
+  });
+  const landed = String(cap.url || "");
+  const rows = allFeedRows(cap.responses);
+  const items = [];
+  const seen = {};
+  for (let i = 0; i < rows.length && items.length < limit; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const isNote = row.model_type === "note" || row.note_card;
+    if (!isNote || row.ignore === true) continue;
+    try {
+      const it = noteItem(row);
+      if (!it.native_id || it.native_id === "note:") continue;
+      if (seen[it.native_id]) continue;
+      seen[it.native_id] = true;
+      items.push(it);
+    } catch (e) {
+      ctx.log.warn("跳过一条解析失败的关注笔记: " + String(e));
+    }
+  }
+  if (!items.length) {
+    if (landed.indexOf("/login") >= 0) {
+      throw new Error("小红书关注流需要登录：先在设置页给小红书登录（登录态只存在本机）");
+    }
+    throw new Error("没抓到小红书关注流：确认已登录并关注了账号，或接口结构变了（页面停留 " + landed + "）");
+  }
+  return { items: items, next: null };
+}
+
 module.exports = {
   async pull(ctx, args) {
+    const feedId = String(args.feedId || "explore");
     const limit = Math.min(Number(args.limit) || 20, 50);
+    if (feedId === "following") return pullFollowing(ctx, limit);
+    if (feedId !== "explore") throw new Error("未知的流：" + feedId + "（支持 explore / following）");
     const res = await captureExplore(ctx);
     const rows = homefeedOf(res.responses);
     if (!rows.length) {

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "zhihu",
   "name": "知乎",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "onefeed-plugins",
-  "description": "知乎推荐流与评论（登录态，浏览器回放取数）",
+  "description": "知乎推荐流、关注流与评论（登录态，浏览器回放取数）",
   "license": "MIT",
   "minHostVersion": "0.2.0",
   "entry": "index.js",
@@ -20,6 +20,12 @@
     {
       "id": "recommend",
       "name": "推荐",
+      "requiresAuth": true,
+      "personalized": true
+    },
+    {
+      "id": "following",
+      "name": "关注",
       "requiresAuth": true,
       "personalized": true
     }

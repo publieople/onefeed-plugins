@@ -288,9 +288,10 @@ module.exports = {
   async pull(ctx, args) {
     const feedId = String(args.feedId || "recommend");
     const limit = Number(args.limit) || 20;
-    if (feedId === "timeline") return pullTimeline(ctx, limit, args.cursor);
+    // following 与 timeline 是同一份动态流；timeline 是旧 id，保留兼容
+    if (feedId === "timeline" || feedId === "following") return pullTimeline(ctx, limit, args.cursor);
     if (feedId === "recommend") return pullRecommend(ctx, limit, args.cursor);
-    throw new Error("未知的流：" + feedId + "（支持 recommend / timeline）");
+    throw new Error("未知的流：" + feedId + "（支持 recommend / timeline / following）");
   },
 
   async detail(ctx, args) {

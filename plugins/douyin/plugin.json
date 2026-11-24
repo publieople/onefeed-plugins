@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "douyin",
   "name": "抖音",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "onefeed-plugins",
-  "description": "抖音网页端推荐流与评论（浏览器回放，不碰签名）",
+  "description": "抖音网页端推荐流、关注流与评论（浏览器回放，不碰签名）",
   "license": "MIT",
   "minHostVersion": "0.2.0",
   "entry": "index.js",
@@ -19,6 +19,12 @@
     {
       "id": "recommend",
       "name": "推荐",
+      "requiresAuth": true,
+      "personalized": true
+    },
+    {
+      "id": "following",
+      "name": "关注",
       "requiresAuth": true,
       "personalized": true
     }

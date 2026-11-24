@@ -3,6 +3,7 @@
 "use strict";
 
 const FEED_PATTERN = "/aweme/v2/web/module/feed/";
+const FOLLOW_PATTERN = "/aweme/v1/web/follow/feed/";
 const COMMENT_PATTERN = "/aweme/v1/web/comment/list/";
 
 function count(value) {
@@ -124,10 +125,58 @@ function awemeIdOf(item) {
   return idx < 0 ? "" : url.slice(idx + "/video/".length).split("?")[0].split("/")[0];
 }
 
+// 关注流：页面自己发 /aweme/v1/web/follow/feed/，响应 data[].aweme 才是内容，
+// feed_type=3 是直播/卡片占位，aweme 为空，跳过
+function followRows(responses) {
+  const rows = [];
+  const list = responses || [];
+  for (let i = 0; i < list.length; i++) {
+    const json = list[i] && list[i].json;
+    const data = json && json.data;
+    if (!Array.isArray(data)) continue;
+    for (let j = 0; j < data.length; j++) {
+      const row = data[j];
+      const aweme = row && row.aweme;
+      if (!aweme || !aweme.aweme_id) continue;
+      rows.push(aweme);
+    }
+  }
+  return rows;
+}
+
+async function pullFollowing(ctx, limit) {
+  const cap = await ctx.browser.capture({
+    url: "https://www.douyin.com/follow",
+    patterns: [FOLLOW_PATTERN],
+    scroll: { times: 3, dy: 2400, intervalMs: 900 },
+    settleMs: 3000,
+    timeoutMs: 65000
+  });
+
+  const seen = {};
+  const items = [];
+  const rows = followRows(cap.responses);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const id = String(row.aweme_id);
+    if (seen[id]) continue;
+    seen[id] = true;
+    items.push(awemeItem(row));
+  }
+  if (!items.length) {
+    throw new Error("没抓到抖音关注流：确认本机浏览器档案已登录抖音并且关注了一些账号，或网页结构变了");
+  }
+  items.sort(function (a, b) { return (b.published_at || 0) - (a.published_at || 0); });
+  return { items: items.slice(0, limit), next: null };
+}
+
 module.exports = {
   async pull(ctx, args) {
+    const feedId = String(args.feedId || "recommend");
     const limit = Math.min(Number(args.limit) || 20, 50);
     if (ctx.env.demo) return { items: [], next: null };
+    if (feedId === "following") return pullFollowing(ctx, limit);
+    if (feedId !== "recommend") throw new Error("未知的流：" + feedId + "（支持 recommend / following）");
 
     const cap = await ctx.browser.capture({
       url: "https://www.douyin.com/?recommend=1",

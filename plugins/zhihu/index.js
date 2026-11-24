@@ -3,6 +3,8 @@
 "use strict";
 
 const RECOMMEND_PATTERN = "/api/v3/feed/topstory/recommend";
+// 关注页的真实接口是 moments（不是 feed/topstory/follow），data[].target 才是回答/文章
+const FOLLOW_PATTERN = "/api/v3/moments";
 // 评论区：回答走 questions/{问题id}，专栏走 articles/{文章id}，都要页面自己带签名发。
 const COMMENT_PATTERN = "/api/v4/comment_v5/(questions|articles)/\\d+/root_comment";
 
@@ -95,10 +97,60 @@ function commentRow(row) {
   };
 }
 
+function followingRows(responses) {
+  const rows = [];
+  const list = responses || [];
+  for (let i = 0; i < list.length; i++) {
+    const json = list[i] && list[i].json;
+    const data = json && json.data;
+    if (Array.isArray(data)) {
+      for (let j = 0; j < data.length; j++) rows.push(data[j]);
+    }
+  }
+  return rows;
+}
+
+async function pullFollowing(ctx, limit) {
+  const cap = await ctx.browser.capture({
+    url: "https://www.zhihu.com/follow",
+    patterns: [FOLLOW_PATTERN],
+    scroll: { times: 4, dy: 3000, intervalMs: 1800 },
+    settleMs: 5000,
+    timeoutMs: 80000,
+    stopWhenMatched: false
+  });
+
+  const seen = {};
+  const items = [];
+  const rows = followingRows(cap.responses);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] || {};
+    const target = row.target || {};
+    const type = String(target.type || "");
+    // feed_advert / feed_group / 「关注了问题」这类没有可读正文，跳过
+    if (type !== "article" && type !== "answer" && type !== "zvideo" && type !== "video") continue;
+    if (!target.id) continue;
+    const key = type + ":" + String(target.id);
+    if (seen[key]) continue;
+    seen[key] = true;
+    const item = feedItem({ target: target });
+    if (!item.url) continue;
+    items.push(item);
+  }
+  if (!items.length) {
+    throw new Error("没抓到知乎关注流：先在设置页给知乎扫码登录（登录态只存在本机），或知乎页面结构变了");
+  }
+  items.sort(function (a, b) { return (b.published_at || 0) - (a.published_at || 0); });
+  return { items: items.slice(0, limit), next: null };
+}
+
 module.exports = {
   async pull(ctx, args) {
+    const feedId = String(args.feedId || "recommend");
     const limit = Math.min(Number(args.limit) || 20, 50);
     if (ctx.env.demo) return { items: [], next: null };
+    if (feedId === "following") return pullFollowing(ctx, limit);
+    if (feedId !== "recommend") throw new Error("未知的流：" + feedId + "（支持 recommend / following）");
 
     const cap = await ctx.browser.capture({
       url: "https://www.zhihu.com/",

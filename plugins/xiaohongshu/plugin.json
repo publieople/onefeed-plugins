@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "xiaohongshu",
   "name": "小红书",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "onefeed-plugins",
-  "description": "小红书发现页（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
+  "description": "小红书发现页与关注流（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
   "license": "MIT",
   "minHostVersion": "0.2.0",
   "entry": "index.js",
@@ -35,6 +35,12 @@
     {
       "id": "explore",
       "name": "发现",
+      "requiresAuth": true,
+      "personalized": true
+    },
+    {
+      "id": "following",
+      "name": "关注",
       "requiresAuth": true,
       "personalized": true
     }

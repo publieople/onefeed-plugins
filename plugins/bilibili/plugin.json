@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bilibili",
   "name": "哔哩哔哩",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": "onefeed-plugins",
   "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）；详情页可出 AI 总结",
   "license": "MIT",
@@ -59,6 +59,12 @@
     {
       "id": "timeline",
       "name": "关注动态",
+      "requiresAuth": true,
+      "personalized": true
+    },
+    {
+      "id": "following",
+      "name": "关注",
       "requiresAuth": true,
       "personalized": true
     }
