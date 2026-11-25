@@ -4,6 +4,8 @@
 
 const DETAIL_BUDGET = 6;   // 推荐流列表不带封面与回复数，前 N 条逐条补详情
 const MAX_TITLE = 200;
+const API = "https://api.bilibili.com";
+const FOLLOWING_PAGE_SIZE = 50;
 
 function unixOf(value) {
   if (typeof value === "number" && isFinite(value) && value > 0) return Math.floor(value);
@@ -150,12 +152,166 @@ function dynamicItem(row) {
   return withTarget(item, String(row.id), commentType);
 }
 
+function isLiveDynamic(row) {
+  const type = String(row.type || "").toLowerCase();
+  const original = row.original || {};
+  const sourceType = String(original.type || "").toLowerCase();
+  if (type.indexOf("live") >= 0 || sourceType.indexOf("live") >= 0) return true;
+  if (row.live || original.live) return true;
+  return false;
+}
+
 async function pullTimeline(ctx, limit, cursor) {
   const argv = ["bili", "feed", "timeline"];
   if (cursor) argv.push("--offset", String(cursor));
   const data = await run(ctx, argv);
-  const items = (data.items || []).map(dynamicItem).slice(0, Math.min(limit, 50));
+  // 直播动态没有可读正文，点进去也是空的；这一版只把图文/视频交给信息流。
+  const items = (data.items || [])
+    .filter(function (row) { return !isLiveDynamic(row); })
+    .map(dynamicItem)
+    .slice(0, Math.min(limit, 50));
   return { items: items, next: data.next_offset ? String(data.next_offset) : null };
+}
+
+// ---------------------------------------------------------------- 接口取数
+function cookieFile(ctx) {
+  // 默认值在 plugin.json 里；空字符串表示用宿主状态目录里的标准 cookie 文件。
+  return String(ctx.settings.get("cookieFile") || "");
+}
+
+async function apiJson(ctx, path, query, timeoutMs) {
+  const opts = {
+    url: API + path,
+    query: query || {},
+    credential: "self",
+    cookieCase: "upper",   // B 站只认 SESSDATA/DedeUserID 这种大写键名
+    headers: {
+      Referer: "https://www.bilibili.com/",
+      Origin: "https://www.bilibili.com"
+    },
+    timeoutMs: timeoutMs || 20000
+  };
+  const file = cookieFile(ctx);
+  if (file) opts.cookieFile = file;
+  const res = await ctx.http.request(opts);
+  if (!res || res.status !== 200) {
+    throw new Error("B 站接口 HTTP " + String((res && res.status) || "?") + "：" + path);
+  }
+  let payload;
+  try { payload = JSON.parse(String(res.text || "{}")); }
+  catch (e) { throw new Error("B 站接口返回不是 JSON：" + path); }
+  if (Number(payload.code) !== 0) {
+    const msg = String(payload.message || payload.msg || "未知错误");
+    if (Number(payload.code) === -101 || Number(payload.code) === -400) {
+      throw new Error("B 站登录态失效（" + msg + "）：先在终端执行 bili login 扫码");
+    }
+    throw new Error("B 站接口报错 " + payload.code + "：" + msg);
+  }
+  return payload.data === undefined ? {} : payload.data;
+}
+
+function accountItem(row) {
+  const mid = String(row.mid || row.uid || "");
+  return {
+    account_id: mid,
+    name: String(row.uname || row.name || ""),
+    avatar: String(row.face || row.avatar || ""),
+    url: mid ? "https://space.bilibili.com/" + mid : "",
+    bio: String(row.sign || row.bio || ""),
+    relation: "following",
+    followed_at: 0,
+    extra: {
+      official_verify: row.official_verify || null,
+      vip: row.vip || null
+    }
+  };
+}
+
+async function followingAccounts(ctx, args) {
+  const limit = Math.max(1, Math.min(Number(args.limit) || 200, 500));
+  const page = Math.max(1, Number(args.cursor) || 1);
+  const size = Math.min(FOLLOWING_PAGE_SIZE, limit);
+  const me = await run(ctx, ["bili", "me", "show", "--raw"], 30000);
+  const mid = String(((me || {}).myinfo || {}).mid || "");
+  if (!mid) throw new Error("bili CLI 没返回当前账号 mid，先执行 bili login");
+  const data = await apiJson(ctx, "/x/relation/followings", {
+    vmid: mid,
+    pn: page,
+    ps: size,
+    order: "desc",
+    order_type: "attention"
+  }, 30000);
+  const rows = Array.isArray(data.list) ? data.list : [];
+  const total = Number(data.total) || 0;
+  const items = rows.map(accountItem).filter(function (a) { return a.account_id; });
+  const next = total && page * size < total ? String(page + 1) : null;
+  return { items: items, next: next, total: total };
+}
+
+function durationOf(text) {
+  const parts = String(text || "").split(":");
+  if (parts.length === 2) return (Number(parts[0]) || 0) * 60 + (Number(parts[1]) || 0);
+  if (parts.length === 3) {
+    return (Number(parts[0]) || 0) * 3600 + (Number(parts[1]) || 0) * 60 + (Number(parts[2]) || 0);
+  }
+  return count(text);
+}
+
+function authorVideoItem(row, fallbackMid) {
+  const bvid = String(row.bvid || "");
+  return {
+    native_id: "video:" + bvid,
+    kind: "video",
+    title: String(row.title || "").slice(0, MAX_TITLE),
+    text: String(row.description || ""),
+    url: bvid ? "https://www.bilibili.com/video/" + bvid : "",
+    cover: String(row.pic || ""),
+    images: [],
+    author: {
+      name: String(row.author || ""),
+      id: String(row.mid || fallbackMid || ""),
+      avatar: ""
+    },
+    published_at: count(row.created),
+    duration: durationOf(row.length),
+    stats: { view: count(row.play), comment: count(row.comment), danmaku: count(row.video_review) },
+    tags: [],
+    extra: {}
+  };
+}
+
+async function authorProfile(ctx, args) {
+  const mid = String(args.id || "");
+  if (!mid) throw new Error("authorProfile 缺少作者 id");
+  const data = await run(ctx, ["bili", "user", "info", mid, "--raw"], 35000);
+  const info = data.info || {};
+  const relation = data.relation || {};
+  return {
+    account_id: String(info.mid || mid),
+    name: String(info.name || ""),
+    avatar: String(info.face || ""),
+    bio: String(info.sign || ""),
+    url: "https://space.bilibili.com/" + String(info.mid || mid),
+    following: count(relation.following),
+    follower: count(relation.follower)
+  };
+}
+
+async function authorPosts(ctx, args) {
+  const mid = String(args.id || "");
+  if (!mid) throw new Error("authorPosts 缺少作者 id");
+  const limit = Math.max(1, Math.min(Number(args.limit) || 20, 50));
+  const page = Math.max(1, Number(args.cursor) || 1);
+  const data = await run(ctx, ["bili", "user", "videos", mid, "--raw",
+    "--page", String(page), "--size", String(limit)], 45000);
+  const list = (data.list || {});
+  const rows = Array.isArray(list.vlist) ? list.vlist : [];
+  const meta = data.page || {};
+  const total = Number(meta.count) || 0;
+  const items = rows.map(function (row) { return authorVideoItem(row, mid); })
+    .filter(function (item) { return item.native_id !== "video:"; });
+  const next = total && page * limit < total ? String(page + 1) : null;
+  return { items: items, next: next, total: total };
 }
 
 // ---------------------------------------------------------------- 评论
@@ -325,6 +481,18 @@ module.exports = {
 
   async summarySource(ctx, args) {
     return buildSummarySource(ctx, args);
+  },
+
+  async followingAccounts(ctx, args) {
+    return followingAccounts(ctx, args || {});
+  },
+
+  async authorProfile(ctx, args) {
+    return authorProfile(ctx, args || {});
+  },
+
+  async authorPosts(ctx, args) {
+    return authorPosts(ctx, args || {});
   },
 
   async auth(ctx) {

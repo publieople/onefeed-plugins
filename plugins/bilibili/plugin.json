@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "bilibili",
   "name": "哔哩哔哩",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "author": "onefeed-plugins",
   "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）；详情页可出 AI 总结",
   "license": "MIT",
@@ -11,7 +11,8 @@
   "entry": "index.js",
   "themeColor": "#FB7299",
   "capabilities": [
-    "cli"
+    "cli",
+    "http"
   ],
   "cli": {
     "allow": [
@@ -26,6 +27,14 @@
       [
         "bili",
         "comment"
+      ],
+      [
+        "bili",
+        "me"
+      ],
+      [
+        "bili",
+        "user"
       ]
     ],
     "env": {
@@ -43,11 +52,22 @@
     "short",
     "images"
   ],
+  "settings": [
+    {
+      "key": "cookieFile",
+      "label": "登录凭证",
+      "type": "path",
+      "default": "${state}/toolhome/bili-cli/credential.json",
+      "description": "bili CLI 的凭证文件；关注名单要用它请求网页接口，只在宿主内读取"
+    }
+  ],
   "features": [
     "comments",
     "detail",
     "media",
-    "summary"
+    "summary",
+    "following_accounts",
+    "author_posts"
   ],
   "feeds": [
     {
