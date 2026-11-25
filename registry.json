@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-18T02:40:26Z",
+  "updatedAt": "2026-11-25T01:59:01Z",
   "plugins": [
     {
       "id": "bilibili",
       "name": "哔哩哔哩",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）；详情页可出 AI 总结",
       "author": "onefeed-plugins",
       "license": "MIT",
@@ -16,26 +16,30 @@
         "images"
       ],
       "capabilities": [
-        "cli"
+        "cli",
+        "http"
       ],
       "features": [
         "comments",
         "detail",
         "media",
-        "summary"
+        "summary",
+        "following_accounts",
+        "author_posts"
       ],
       "feeds": [
         "recommend",
-        "timeline"
+        "timeline",
+        "following"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/bilibili/",
-      "sha256": "626d7b9e52533a12471fc813f73aec0090e40e7b938d57cf1482d2a4109e5c9e"
+      "sha256": "534c88728c7c89d990c0bd0eda667e2fa70a591cb998587bf6f16a8646eea616"
     },
     {
       "id": "douyin",
       "name": "抖音",
-      "version": "0.4.0",
-      "description": "抖音网页端推荐流与评论（浏览器回放，不碰签名）",
+      "version": "0.4.1",
+      "description": "抖音网页端推荐流、关注流与评论（浏览器回放，不碰签名）",
       "author": "onefeed-plugins",
       "license": "MIT",
       "kinds": [
@@ -49,10 +53,11 @@
         "comments"
       ],
       "feeds": [
-        "recommend"
+        "recommend",
+        "following"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/douyin/",
-      "sha256": "5efb9554fdffca21af2d7f2a11f6c5910a2f13994a79f8848750764640e4d344"
+      "sha256": "2856a2b58456f6fb434003c988e834ae13b1aedecbc7b3786ed746041cbe8f24"
     },
     {
       "id": "juejin",
@@ -101,8 +106,8 @@
     {
       "id": "xiaohongshu",
       "name": "小红书",
-      "version": "0.4.0",
-      "description": "小红书发现页（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
+      "version": "0.4.1",
+      "description": "小红书发现页与关注流（只读，宿主浏览器截 homefeed；登录态由宿主注入 cookie）",
       "author": "onefeed-plugins",
       "license": "MIT",
       "kinds": [
@@ -118,16 +123,17 @@
         "comments"
       ],
       "feeds": [
-        "explore"
+        "explore",
+        "following"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/xiaohongshu/",
-      "sha256": "6c07ae861fabbf9bd818526aa1ebf4bd246c3ee960da86329ba1dc06717da152"
+      "sha256": "10b16c017b898692dbfecacf56672f8a940a8f47a55a759891753e0b44706116"
     },
     {
       "id": "zhihu",
       "name": "知乎",
-      "version": "0.2.0",
-      "description": "知乎推荐流与评论（登录态，浏览器回放取数）",
+      "version": "0.2.1",
+      "description": "知乎推荐流、关注流与评论（登录态，浏览器回放取数）",
       "author": "onefeed-plugins",
       "license": "MIT",
       "kinds": [
@@ -142,10 +148,11 @@
         "comments"
       ],
       "feeds": [
-        "recommend"
+        "recommend",
+        "following"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/zhihu/",
-      "sha256": "fc5d735b8ac756e9dbb119ff52c56a5b45d68667a9734b0591009ae975bc2fa7"
+      "sha256": "9f3fd30ff7c34564c0f1187dfe4029d85e071bc31aacbbee2299dec0525741ed"
     },
     {
       "id": "zhihu-hot",
