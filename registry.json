@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "name": "OneFeed 官方示例插件集",
-  "updatedAt": "2026-11-25T01:59:01Z",
+  "updatedAt": "2026-11-27T13:06:30Z",
   "plugins": [
     {
       "id": "bilibili",
       "name": "哔哩哔哩",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "description": "B 站首页推荐与关注动态（只读，经本机 bili CLI）；详情页可出 AI 总结",
       "author": "onefeed-plugins",
       "license": "MIT",
@@ -33,7 +33,7 @@
         "following"
       ],
       "download": "https://cdn.jsdelivr.net/gh/publieople/onefeed-plugins@main/plugins/bilibili/",
-      "sha256": "534c88728c7c89d990c0bd0eda667e2fa70a591cb998587bf6f16a8646eea616"
+      "sha256": "24be369564f6266a3a574b540e1a5ae8750d481d2210557d6c86843dcc6f3ce4"
     },
     {
       "id": "douyin",

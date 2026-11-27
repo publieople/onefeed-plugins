@@ -2,8 +2,9 @@
 // 数据来源：bili feed recommend / bili feed timeline / bili video info / bili comment list
 "use strict";
 
-const DETAIL_BUDGET = 6;   // 推荐流列表不带封面与回复数，前 N 条逐条补详情
 const MAX_TITLE = 200;
+const RECOMMEND_MAX = 30;   // bili feed recommend 的 --count 上限
+const DETAIL_BUDGET = 6;    // 推荐流列表不带回复数，前 N 条补一次详情
 const API = "https://api.bilibili.com";
 const FOLLOWING_PAGE_SIZE = 50;
 
@@ -43,54 +44,39 @@ function withTarget(item, id, type) {
 // ---------------------------------------------------------------- 推荐流
 function recommendItem(row) {
   const bvid = String(row.bvid || "");
-  const author = row.author || {};
+  const author = row.owner || row.author || {};
   const stat = row.stat || {};
+  const followed = row.is_followed === undefined ? row.followed_author : row.is_followed;
   const item = {
     native_id: "video:" + bvid,
     kind: "video",
     title: String(row.title || "").slice(0, MAX_TITLE),
     text: "",
     url: row.url || ("https://www.bilibili.com/video/" + bvid),
-    cover: String(row.pic || ""),
+    cover: String(row.pic || row.cover || ""),
     images: [],
-    author: { name: String(author.name || ""), id: String(author.mid || ""), avatar: "" },
+    author: { name: String(author.name || ""), id: String(author.mid || ""), avatar: String(author.face || "") },
     published_at: unixOf(row.pubdate),
     duration: count(row.duration),
     stats: { view: count(stat.view), like: count(stat.like), comment: count(stat.reply) },
     tags: [],
-    extra: { followed: !!row.followed_author, danmaku: count(stat.danmaku) }
+    extra: { followed: !!followed, danmaku: count(stat.danmaku) }
   };
   return withTarget(item, bvid, "video");
 }
 
 async function pullRecommend(ctx, limit, cursor) {
   const page = Math.max(1, Math.min(Number(cursor) || 1, 50));
+  const count = Math.min(Math.max(limit, 1), RECOMMEND_MAX);
+  // 归一化输出会丢掉 pic；直接读 --raw 的 data.item，封面就在这一层
   const data = await run(ctx, [
-    "bili", "feed", "recommend", "--count", String(Math.min(Math.max(limit, 1), 50)), "--page", String(page)
+    "bili", "feed", "recommend", "--count", String(count), "--page", String(page), "--raw"
   ]);
-  const items = (data.items || []).map(recommendItem);
-
-  const needDetail = items.slice(0, Math.min(items.length, DETAIL_BUDGET));
-  for (let i = 0; i < needDetail.length; i++) {
-    const item = needDetail[i];
-    if (item.cover) continue;
-    const bvid = item.native_id.slice("video:".length);
-    try {
-      const info = await run(ctx, ["bili", "video", "info", bvid, "--raw"], 30000);
-      item.cover = String(info.pic || "");
-      item.text = String(info.desc || "");
-      item.duration = count(info.duration) || item.duration;
-      const owner = info.owner || {};
-      item.author.avatar = String(owner.face || "");
-      item.stats.comment = count((info.stat || {}).reply) || item.stats.comment;
-      if (info.dimension && info.dimension.width) {
-        item.extra.width = count(info.dimension.width);
-        item.extra.height = count(info.dimension.height);
-      }
-    } catch (e) {
-      ctx.log.warn("补 " + bvid + " 详情失败：" + String(e).slice(0, 160));
-    }
-  }
+  const rows = Array.isArray(data.item) ? data.item : (Array.isArray(data.items) ? data.items : []);
+  const items = rows
+    .filter(function (row) { return Boolean(row && row.bvid); })
+    .map(recommendItem);
+  await fillMissingVideoDetails(ctx, items);
   return { items: items, next: String(page + 1) };
 }
 
@@ -161,6 +147,50 @@ function isLiveDynamic(row) {
   return false;
 }
 
+// 归一化动态把 video.pic 抹成 null；原始动态的 major.archive.cover 还在。
+function rawTimelineCovers(raw) {
+  const map = {};
+  const rows = raw && Array.isArray(raw.items) ? raw.items : [];
+  rows.forEach(function (row) {
+    [row, row && row.orig].forEach(function (block) {
+      if (!block) return;
+      const major = (((block.modules || {}).module_dynamic || {}).major) || {};
+      const archive = major.archive || {};
+      if (archive.bvid && archive.cover) map[String(archive.bvid)] = String(archive.cover);
+    });
+  });
+  return map;
+}
+
+// 原始流没给封面，或前几条缺回复数时，逐条查视频信息。
+async function fillMissingVideoDetails(ctx, items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.kind !== "video") continue;
+    const needCover = !item.cover;
+    const needComments = i < DETAIL_BUDGET && !item.stats.comment;
+    if (!needCover && !needComments) continue;
+    const bvid = bvidOf(item);
+    if (!bvid) continue;
+    try {
+      const info = await run(ctx, ["bili", "video", "info", bvid, "--raw"], 20000);
+      if (!item.cover) item.cover = String(info.pic || "");
+      if (!item.text) item.text = String(info.desc || "");
+      if (!item.duration) item.duration = count(info.duration);
+      const owner = info.owner || {};
+      if (!item.author.avatar) item.author.avatar = String(owner.face || "");
+      const stat = info.stat || {};
+      if (!item.stats.comment) item.stats.comment = count(stat.reply) || item.stats.comment;
+      if (info.dimension && info.dimension.width) {
+        item.extra.width = count(info.dimension.width);
+        item.extra.height = count(info.dimension.height);
+      }
+    } catch (e) {
+      ctx.log.warn("补 " + bvid + " 详情失败：" + String(e).slice(0, 160));
+    }
+  }
+}
+
 async function pullTimeline(ctx, limit, cursor) {
   const argv = ["bili", "feed", "timeline"];
   if (cursor) argv.push("--offset", String(cursor));
@@ -170,6 +200,27 @@ async function pullTimeline(ctx, limit, cursor) {
     .filter(function (row) { return !isLiveDynamic(row); })
     .map(dynamicItem)
     .slice(0, Math.min(limit, 50));
+
+  const missingCover = items.some(function (item) {
+    return item.kind === "video" && !item.cover && bvidOf(item);
+  });
+  if (missingCover) {
+    try {
+      const rawArgv = ["bili", "feed", "timeline"];
+      if (cursor) rawArgv.push("--offset", String(cursor));
+      rawArgv.push("--raw");
+      const raw = await run(ctx, rawArgv, 60000);
+      const covers = rawTimelineCovers(raw);
+      items.forEach(function (item) {
+        if (item.kind !== "video" || item.cover) return;
+        const bvid = bvidOf(item);
+        if (bvid && covers[bvid]) item.cover = covers[bvid];
+      });
+    } catch (e) {
+      ctx.log.warn("取动态封面失败：" + String(e).slice(0, 160));
+    }
+  }
+  await fillMissingVideoDetails(ctx, items);
   return { items: items, next: data.next_offset ? String(data.next_offset) : null };
 }
 
